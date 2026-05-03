@@ -16,6 +16,7 @@ Dashboard moderno de monitoramento meteorológico construído com **Angular 19**
 - [Pré-requisitos](#pré-requisitos)
 - [Configuração da API key](#configuração-da-api-key)
 - [Como rodar](#como-rodar)
+- [Rodando com Docker](#rodando-com-docker)
 - [Comandos disponíveis](#comandos-disponíveis)
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Decisões arquiteturais](#decisões-arquiteturais)
@@ -93,6 +94,104 @@ npm run build:prod
 # artefato em dist/dashboard-clima/
 ```
 
+## Rodando com Docker
+
+A imagem é multi-stage: a primeira etapa compila o bundle de produção com **Node 22 Alpine** e a segunda serve os arquivos estáticos via **nginx 1.27 Alpine** (com fallback de SPA, compressão gzip, cache imutável para bundles hashados e cabeçalhos de segurança).
+
+### Pré-requisitos
+
+- Docker 24+ (com BuildKit habilitado — o padrão atual)
+- Docker Compose v2 (já incluído no Docker Desktop)
+
+### 1. Configure a API key antes de buildar
+
+O arquivo `src/environments/environment.ts` é lido **em tempo de build** (Angular faz tree-shaking dele dentro do bundle). Garanta que ele exista com sua chave válida:
+
+```bash
+cp src/environments/environment.example.ts src/environments/environment.ts
+# edite o arquivo e cole sua chave em apiKey
+```
+
+> Se `environment.ts` não existir, o `Dockerfile` faz fallback automático para o template do `environment.example.ts` — útil para CI, mas o app não conseguirá consultar a API até você refazer o build com uma chave real.
+
+### 2. Build + run com `docker compose` (recomendado)
+
+```bash
+# build da imagem e subida em segundo plano
+docker compose up -d --build
+
+# acesse em http://localhost:8080
+```
+
+A porta padrão do host é **8080**. Para mudar, use a variável `HOST_PORT`:
+
+```bash
+HOST_PORT=3000 docker compose up -d --build
+```
+
+Para parar e remover o container:
+
+```bash
+docker compose down
+```
+
+### 3. Build + run usando apenas `docker`
+
+```bash
+# build
+docker build -t dashboard-clima:latest .
+
+# run
+docker run --rm -p 8080:80 --name clima dashboard-clima:latest
+
+# acesse em http://localhost:8080
+```
+
+### O que está incluído na imagem
+
+| Camada     | Ferramenta            | Tamanho aprox. |
+| ---------- | --------------------- | -------------- |
+| Build      | `node:22-alpine`      | descartada     |
+| Runtime    | `nginx:1.27-alpine`   | ~50 MB         |
+| Bundle SPA | dist/dashboard-clima/ | ~85 KB gzipped |
+
+### Configuração do nginx
+
+O arquivo [nginx.conf](nginx.conf) inclui:
+
+- **SPA fallback** — qualquer rota desconhecida (`/about`, `/cidade/lisbon`, etc.) cai em `index.html` para o Angular Router assumir.
+- **Cache imutável de 1 ano** para arquivos hashados (`*.js`, `*.css`, fontes, imagens).
+- **`Cache-Control: no-store`** em `index.html` — cada deploy é entregue imediatamente.
+- **Gzip** para assets de texto.
+- Headers de segurança: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`.
+
+### Healthcheck
+
+Tanto o `Dockerfile` quanto o `docker-compose.yml` definem healthcheck via `wget --spider http://localhost/`. Verifique com:
+
+```bash
+docker ps               # coluna STATUS exibe (healthy)
+docker inspect dashboard-clima | grep -A 5 Health
+```
+
+### Logs e troubleshooting
+
+```bash
+docker compose logs -f web         # acompanhar requests do nginx em tempo real
+docker compose exec web sh         # shell dentro do container
+docker compose exec web nginx -t   # validar nginx.conf
+```
+
+Se a tela ficar em branco após o deploy: a chave provavelmente está incorreta. Veja o painel **Network** do navegador — chamadas `401` indicam chave inválida, `404` indicam cidade não encontrada.
+
+### Deploy em produção
+
+A imagem é stateless e roda em qualquer plataforma de container — Kubernetes, ECS, Cloud Run, Fly.io, Railway, Render. Coisas a considerar:
+
+- **HTTPS** — termine TLS num ingress/load balancer na frente do container, não no nginx interno.
+- **Rotação da API key** — como a chave fica embutida no bundle, qualquer rotação exige novo build + redeploy. Para chaves "secretas de verdade", proxie a API através de um backend próprio em vez de chamar do navegador.
+- **Variáveis de runtime** — se você quiser injetar config sem rebuildar, troque o `environment.ts` estático por um `assets/config.json` carregado via `APP_INITIALIZER`.
+
 ## Comandos disponíveis
 
 | Comando                 | Descrição                                    |
@@ -141,6 +240,10 @@ dashboard-clima/
 │   ├── styles.css                   # Tailwind + tokens de design
 │   ├── index.html
 │   └── main.ts
+├── Dockerfile                       # Build multi-stage (Node 22 + nginx)
+├── docker-compose.yml               # Orquestração local
+├── nginx.conf                       # SPA fallback, cache, gzip, security
+├── .dockerignore
 ├── karma.conf.js                    # Configuração de testes + thresholds
 ├── tailwind.config.js
 ├── eslint.config.js

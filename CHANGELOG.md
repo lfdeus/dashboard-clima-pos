@@ -24,3 +24,6 @@ o projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 - ESLint (`angular-eslint`) e Prettier configurados.
 - Pipeline de CI (GitHub Actions) — install → lint → test → build.
 - Documentação completa: README, CHANGELOG, LICENSE.
+- **Docker**: `Dockerfile` multi-stage (Node 22 → nginx 1.27 alpine), `nginx.conf`
+  com SPA fallback + cache imutável + gzip + security headers, `docker-compose.yml`
+  com healthcheck e variável `HOST_PORT`, `.dockerignore` enxuto.
