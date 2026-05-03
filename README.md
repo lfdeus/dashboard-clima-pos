@@ -2,7 +2,7 @@
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)](.github/workflows/ci.yml)
 [![Angular](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Academic](https://img.shields.io/badge/license-Academic-9b59b6.svg)](LICENSE)
 [![Coverage](https://img.shields.io/badge/coverage-%E2%89%A570%25-brightgreen)](#testes)
 
 Dashboard moderno de monitoramento meteorológico construído com **Angular 19**, **Signals**, **standalone components** e **Tailwind CSS**. Consome a API do [OpenWeatherMap](https://openweathermap.org/api) para exibir clima atual e previsão de 5 dias para qualquer cidade do mundo.
@@ -355,6 +355,15 @@ git push origin main --follow-tags
 
 ## Licença
 
-[MIT](LICENSE) © 2026 Dashboard de Clima.
+> 📚 **Projeto acadêmico** — desenvolvido como entrega de **Pós-Graduação**, distribuído livremente para fins educacionais.
 
-Dados meteorológicos fornecidos por [OpenWeatherMap](https://openweathermap.org/).
+Permissões e restrições estão descritas no arquivo [LICENSE](LICENSE):
+
+- ✅ Estudo, leitura, cópia e modificação para uso **acadêmico** e **educacional não comercial**.
+- ✅ Citação como referência em trabalhos acadêmicos, mantendo o crédito ao autor.
+- ❌ Uso comercial sem autorização expressa do autor.
+- ❌ Reapresentação como entrega avaliativa em outros cursos sem citar a fonte e indicar as alterações.
+
+> O software é fornecido "no estado em que se encontra", sem garantias de qualquer natureza.
+
+Desenvolvido com apoio de Claude (Opus 4.7). Dados meteorológicos fornecidos por [OpenWeatherMap](https://openweathermap.org/).

@@ -2,7 +2,7 @@
   "name": "dashboard-clima",
   "version": "1.0.0",
   "description": "Dashboard de monitoramento de clima em Angular 19+ com signals, standalone components e Tailwind CSS",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "private": true,
   "scripts": {
     "ng": "ng",
