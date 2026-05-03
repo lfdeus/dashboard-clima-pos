@@ -1,0 +1,136 @@
+<div class="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-5xl">
+    <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Dashboard de Clima</h1>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Monitore as condições meteorológicas de qualquer cidade do mundo.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="btn-ghost text-sm"
+          (click)="toggleUnit()"
+          [attr.aria-pressed]="unit() === 'fahrenheit'"
+          aria-label="Alternar entre Celsius e Fahrenheit"
+        >
+          <span [class.font-bold]="unit() === 'celsius'">°C</span>
+          <span class="mx-1 text-slate-400">/</span>
+          <span [class.font-bold]="unit() === 'fahrenheit'">°F</span>
+        </button>
+        <button
+          type="button"
+          class="btn-ghost px-3 text-sm"
+          (click)="toggleTheme()"
+          [attr.aria-label]="theme() === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'"
+        >
+          @if (theme() === 'dark') {
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.95 2.05a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zm-2.05 4.95a1 1 0 01-1.414 0l-.707-.707a1 1 0 111.414-1.414l.707.707a1 1 0 010 1.414zM10 16a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm-4.95-1.05a1 1 0 010-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0zM2 10a1 1 0 011-1h1a1 1 0 110 2H3a1 1 0 01-1-1zm2.05-4.95a1 1 0 011.414 0l.707.707A1 1 0 015.757 7.17l-.707-.707a1 1 0 010-1.414zM10 6a4 4 0 100 8 4 4 0 000-8z"
+              />
+            </svg>
+          } @else {
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+            </svg>
+          }
+        </button>
+      </div>
+    </header>
+
+    <section class="card mb-6 p-4 sm:p-6">
+      <app-search-bar
+        [debounceMs]="400"
+        [disabled]="isLoading()"
+        (searchSubmitted)="onSearch($event)"
+        (searchTyped)="onSearch($event)"
+      />
+
+      @if (history().length > 0) {
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <span class="text-xs uppercase tracking-wide text-slate-500">Histórico:</span>
+          @for (h of history(); track h) {
+            <button
+              type="button"
+              class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-brand-100 hover:text-brand-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-brand-900 dark:hover:text-brand-100"
+              (click)="onSelectHistory(h)"
+            >
+              {{ h }}
+            </button>
+          }
+          <button
+            type="button"
+            class="ml-auto text-xs text-slate-500 underline-offset-2 hover:underline"
+            (click)="onClearHistory()"
+            aria-label="Limpar histórico"
+          >
+            Limpar
+          </button>
+        </div>
+      }
+    </section>
+
+    @if (isLoading()) {
+      <div class="card mb-6 p-6">
+        <app-spinner label="Buscando clima…" />
+        <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          @for (_ of forecastSkeleton; track $index) {
+            <div class="h-40 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700"></div>
+          }
+        </div>
+      </div>
+    } @else if (error()) {
+      <app-error-message [message]="error()!" (retry)="retry()" />
+    } @else if (hasResult()) {
+      <app-weather-card [weather]="weather()" [unit]="unit()" />
+
+      @if (forecast().length > 0) {
+        <section class="mt-6">
+          <h2 class="mb-3 text-lg font-semibold">Próximos dias</h2>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+            @for (day of forecast(); track day.date) {
+              <app-forecast-card [day]="day" [unit]="unit()" />
+            } @empty {
+              <p class="text-sm text-slate-500">Sem previsão disponível.</p>
+            }
+          </div>
+        </section>
+      }
+    } @else {
+      <div class="card flex flex-col items-center gap-2 p-10 text-center">
+        <svg
+          class="h-12 w-12 text-brand-500"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M2.25 15a4.5 4.5 0 014.5-4.5 5.25 5.25 0 0110.4-1.05A4.5 4.5 0 0119.5 18H6.75A4.5 4.5 0 012.25 15z"
+          />
+        </svg>
+        <p class="text-base font-medium">Comece pesquisando uma cidade</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+          Tente "São Paulo", "Lisbon" ou "Tokyo".
+        </p>
+      </div>
+    }
+
+    <footer class="mt-10 text-center text-xs text-slate-400">
+      Dados fornecidos por
+      <a
+        href="https://openweathermap.org/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:text-brand-500"
+      >
+        OpenWeatherMap
+      </a>
+    </footer>
+  </div>
+</div>
