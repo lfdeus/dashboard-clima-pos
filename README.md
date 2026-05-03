@@ -41,20 +41,34 @@ Dashboard moderno de monitoramento meteorológico construído com **Angular 19**
 
 ## Capturas de tela
 
-> _Adicione GIFs/PNGs em `docs/screenshots/` após o primeiro deploy._
+<p align="center">
+  <em>Tema claro à esquerda, tema escuro à direita. Toggle persistido em <code>localStorage</code>.</em>
+</p>
 
-```
-docs/
-└─ screenshots/
-   ├─ dashboard-light.png
-   ├─ dashboard-dark.png
-   └─ mobile.png
-```
+## Web
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-light.png" alt="Dashboard de Clima — tema claro" width="48%" />
+  &#160;
+  <img src="docs/screenshots/dashboard-dark.png" alt="Dashboard de Clima — tema escuro" width="48%" />
+</p>
+
+## Mobile
+
+<p align="center">
+  <img src="docs/screenshots/mobile-light.png" alt="Dashboard de Clima — Mobile tema claro" width="48%" />
+  &#160;
+  <img src="docs/screenshots/mobile-dark.png" alt="Dashboard de Clima — Mobile tema escuro" width="48%" />
+</p>
+
+
+
+> Os arquivos vivem em [`docs/screenshots/`](docs/screenshots/). Os nomes esperados pelo README são `dashboard-light.png` e `dashboard-dark.png` (mais um opcional `mobile.png` para a versão responsiva).
 
 ## Pré-requisitos
 
 | Ferramenta        | Versão mínima              |
-| ----------------- | -------------------------- |
+|-------------------|----------------------------|
 | Node.js           | **22 LTS** (≥ 20.11)       |
 | npm               | **10+**                    |
 | Angular CLI       | 19.x (instalada via `npx`) |
@@ -150,7 +164,7 @@ docker run --rm -p 8080:80 --name clima dashboard-clima:latest
 ### O que está incluído na imagem
 
 | Camada     | Ferramenta            | Tamanho aprox. |
-| ---------- | --------------------- | -------------- |
+|------------|-----------------------|----------------|
 | Build      | `node:22-alpine`      | descartada     |
 | Runtime    | `nginx:1.27-alpine`   | ~50 MB         |
 | Bundle SPA | dist/dashboard-clima/ | ~85 KB gzipped |
@@ -195,7 +209,7 @@ A imagem é stateless e roda em qualquer plataforma de container — Kubernetes,
 ## Comandos disponíveis
 
 | Comando                 | Descrição                                    |
-| ----------------------- | -------------------------------------------- |
+|-------------------------|----------------------------------------------|
 | `npm start`             | Servidor de desenvolvimento na porta 4200    |
 | `npm run build`         | Build de produção (default)                  |
 | `npm run build:prod`    | Build de produção otimizado                  |
@@ -295,7 +309,7 @@ npm run test:coverage
 Relatório HTML em `coverage/dashboard-clima/index.html`. Thresholds (configurados em [karma.conf.js](karma.conf.js)):
 
 | Métrica    | Mínimo |
-| ---------- | ------ |
+|------------|--------|
 | Statements | 70%    |
 | Lines      | 70%    |
 | Functions  | 70%    |
