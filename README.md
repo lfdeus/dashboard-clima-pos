@@ -41,11 +41,9 @@ Dashboard moderno de monitoramento meteorológico construído com **Angular 19**
 
 ## Capturas de tela
 
-<p align="center">
-  <em>Tema claro à esquerda, tema escuro à direita. Toggle persistido em <code>localStorage</code>.</em>
-</p>
+Tema claro à esquerda, tema escuro à direita — toggle persistido em `localStorage`.
 
-## Web
+### Desktop
 
 <p align="center">
   <img src="docs/screenshots/dashboard-light.png" alt="Dashboard de Clima — tema claro" width="48%" />
@@ -53,22 +51,20 @@ Dashboard moderno de monitoramento meteorológico construído com **Angular 19**
   <img src="docs/screenshots/dashboard-dark.png" alt="Dashboard de Clima — tema escuro" width="48%" />
 </p>
 
-## Mobile
+### Mobile
 
 <p align="center">
-  <img src="docs/screenshots/mobile-light.png" alt="Dashboard de Clima — Mobile tema claro" width="48%" />
+  <img src="docs/screenshots/mobile-light.png" alt="Dashboard de Clima — mobile tema claro" width="32%" />
   &#160;
-  <img src="docs/screenshots/mobile-dark.png" alt="Dashboard de Clima — Mobile tema escuro" width="48%" />
+  <img src="docs/screenshots/mobile-dark.png" alt="Dashboard de Clima — mobile tema escuro" width="32%" />
 </p>
 
-
-
-> Os arquivos vivem em [`docs/screenshots/`](docs/screenshots/). Os nomes esperados pelo README são `dashboard-light.png` e `dashboard-dark.png` (mais um opcional `mobile.png` para a versão responsiva).
+> Os arquivos vivem em [`docs/screenshots/`](docs/screenshots/). Nomes esperados: `dashboard-light.png`, `dashboard-dark.png`, `mobile-light.png`, `mobile-dark.png`.
 
 ## Pré-requisitos
 
 | Ferramenta        | Versão mínima              |
-|-------------------|----------------------------|
+| ----------------- | -------------------------- |
 | Node.js           | **22 LTS** (≥ 20.11)       |
 | npm               | **10+**                    |
 | Angular CLI       | 19.x (instalada via `npx`) |
@@ -164,7 +160,7 @@ docker run --rm -p 8080:80 --name clima dashboard-clima:latest
 ### O que está incluído na imagem
 
 | Camada     | Ferramenta            | Tamanho aprox. |
-|------------|-----------------------|----------------|
+| ---------- | --------------------- | -------------- |
 | Build      | `node:22-alpine`      | descartada     |
 | Runtime    | `nginx:1.27-alpine`   | ~50 MB         |
 | Bundle SPA | dist/dashboard-clima/ | ~85 KB gzipped |
@@ -209,7 +205,7 @@ A imagem é stateless e roda em qualquer plataforma de container — Kubernetes,
 ## Comandos disponíveis
 
 | Comando                 | Descrição                                    |
-|-------------------------|----------------------------------------------|
+| ----------------------- | -------------------------------------------- |
 | `npm start`             | Servidor de desenvolvimento na porta 4200    |
 | `npm run build`         | Build de produção (default)                  |
 | `npm run build:prod`    | Build de produção otimizado                  |
@@ -309,7 +305,7 @@ npm run test:coverage
 Relatório HTML em `coverage/dashboard-clima/index.html`. Thresholds (configurados em [karma.conf.js](karma.conf.js)):
 
 | Métrica    | Mínimo |
-|------------|--------|
+| ---------- | ------ |
 | Statements | 70%    |
 | Lines      | 70%    |
 | Functions  | 70%    |
@@ -328,10 +324,26 @@ Commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-br/
 
 ## Release
 
+Versão atual: **`v1.0.0`** (tag já criada localmente — veja [CHANGELOG.md](CHANGELOG.md)).
+
+Para publicar a tag no remoto:
+
 ```bash
-# Após mergear na main e atualizar CHANGELOG.md:
-git tag -a v1.0.0 -m "Initial release"
 git push origin v1.0.0
+# ou, se houver outras tags pendentes:
+git push origin --tags
+```
+
+Para próximas versões, siga [SemVer](https://semver.org/lang/pt-BR/) e atualize o `CHANGELOG.md` antes de criar a tag:
+
+```bash
+# 1. Atualize CHANGELOG.md com a nova versão
+# 2. Bump da versão no package.json
+npm version <patch|minor|major> --no-git-tag-version
+# 3. Commit e tag
+git commit -am "chore: release vX.Y.Z"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin main --follow-tags
 ```
 
 ## Contribuindo

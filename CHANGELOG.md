@@ -8,6 +8,7 @@ o projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 ## [1.0.0] - 2026-05-03
 
 ### Added
+
 - Estrutura inicial do projeto Angular 19 com componentes 100% standalone.
 - Integração com a API do OpenWeatherMap (`/weather` e `/forecast`).
 - Dashboard com busca por cidade, debounce de 400 ms e exibição de:
