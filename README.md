@@ -19,6 +19,7 @@ Dashboard moderno de monitoramento meteorológico construído com **Angular 19**
 - [Rodando com Docker](#rodando-com-docker)
 - [Comandos disponíveis](#comandos-disponíveis)
 - [Estrutura do projeto](#estrutura-do-projeto)
+- [Arquitetura (diagrams as code)](#arquitetura-diagrams-as-code)
 - [Decisões arquiteturais](#decisões-arquiteturais)
 - [Testes](#testes)
 - [Estratégia de branches](#estratégia-de-branches)
@@ -265,6 +266,20 @@ dashboard-clima/
 ├── LICENSE
 └── README.md
 ```
+
+## Arquitetura (diagrams as code)
+
+A documentação arquitetural fica em [`docs/arquitetura/`](docs/arquitetura/). Ela foi
+escrita para servir de contexto a agentes de desenvolvimento e reúne:
+
+- diagramas Mermaid de containers e da jornada "consultar o clima de uma cidade", com os
+  caminhos de erro;
+- invariantes arquiteturais, lacunas numeradas e os contratos consumidos (OpenAPI e JSON
+  Schema);
+- o registro do que a IA generativa inferiu e do que precisou ser ajustado.
+
+Essa documentação descreve o sistema **como está** no commit `6bc8a92`, inclusive as
+divergências entre o código, os requisitos e este README.
 
 ## Decisões arquiteturais
 

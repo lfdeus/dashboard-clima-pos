@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dashboard-clima/localstorage.schema.json",
+  "title": "Estado persistido no localStorage (commit 6bc8a92)",
+  "description": "Chaves que a SPA lê e grava no localStorage do navegador (INV07). Cada propriedade corresponde a uma chave. Para clima:history, o schema descreve o valor depois do JSON.parse; clima:unit e clima:theme são gravados como texto puro. Um valor inválido é descartado na leitura, e a SPA volta ao valor padrão.",
+  "type": "object",
+  "properties": {
+    "clima:history": {
+      "description": "Gravado como JSON.stringify(array). Contém nomes de cidade devolvidos pela API, o mais recente primeiro, sem duplicatas (sem diferenciar maiúsculas de minúsculas). Na leitura, itens que não são string são descartados. JSON inválido vira lista vazia.",
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 5,
+      "default": []
+    },
+    "clima:unit": {
+      "description": "Texto puro. Qualquer valor diferente de 'fahrenheit' é lido como 'celsius'.",
+      "type": "string",
+      "enum": ["celsius", "fahrenheit"],
+      "default": "celsius"
+    },
+    "clima:theme": {
+      "description": "Texto puro. Se a chave faltar ou tiver valor inválido, vale a preferência do sistema (prefers-color-scheme).",
+      "type": "string",
+      "enum": ["light", "dark"]
+    }
+  },
+  "additionalProperties": false
+}

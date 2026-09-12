@@ -1,0 +1,48 @@
+%% Jornada crítica "consultar o clima de uma cidade": estado real no commit 6bc8a92.
+%% Fonte de verdade deste diagrama. O bloco equivalente no README espelha este arquivo.
+sequenceDiagram
+    autonumber
+    actor U as Usuário
+    participant UI as SPA · Dashboard<br/>(tela e estado)
+    participant SVC as SPA · WeatherService<br/>(+ interceptor)
+    participant API as OpenWeatherMap API
+    participant ICO as OpenWeatherMap ícones
+    participant LS as localStorage
+
+    U->>UI: digita "Lisboa" e pausa 400 ms, confirma com Enter ou clica numa cidade do histórico
+    Note over U,UI: Pausa na digitação e Enter são gatilhos independentes (termo com pelo menos 2 caracteres, senão nada acontece).<br/>O mesmo termo pode gerar duas buscas, e termos parciais também consultam a API (L03, L08).
+    UI->>UI: isLoading = true e error = null
+
+    par forkJoin: as duas chamadas saem em paralelo
+        UI->>SVC: getCurrentWeather("Lisboa")
+        SVC->>API: GET /weather?q=Lisboa&appid=***&units=metric&lang=pt_br
+    and
+        UI->>SVC: getForecast("Lisboa")
+        SVC->>API: GET /forecast?q=Lisboa&appid=***&units=metric&lang=pt_br
+    end
+    Note over SVC,API: O interceptor anexa appid, units e lang só a URLs da API de clima.<br/>Não há timeout, retry automático nem cancelamento da busca anterior (L05).
+
+    alt as duas respostas 200
+        API-->>SVC: 200 condição atual + 200 previsão (40 pontos de 3 h)
+        SVC->>SVC: normaliza e agrupa a previsão por data de dt_txt (UTC), mantém 5 grupos (L07)
+        SVC-->>UI: CurrentWeather + ForecastDay[]
+        UI->>UI: weather e forecast atualizados, isLoading = false
+        UI->>LS: clima:history recebe o nome devolvido pela API (topo, sem duplicar, máx. 5)
+        UI->>ICO: GET ícone @4x (card atual) e @2x (cada dia)
+        UI-->>U: card do clima atual + 5 cartões (o 1º é o dia corrente)
+    else qualquer uma falha (forkJoin cancela a outra)
+        API-->>SVC: 404, 401, erro de rede (status 0) ou outro status (429, 5xx...)
+        Note over SVC: Status 0 vira NETWORK, 401 vira UNAUTHORIZED e 404 vira NOT_FOUND.<br/>Qualquer outro status, e também um JSON que falhe na normalização, vira UNKNOWN com mensagem genérica.
+        SVC-->>UI: WeatherApiError com a mensagem pronta para exibição
+        UI->>UI: error = mensagem, weather = null, forecast = [] (descarta resultado parcial, L06)
+        Note over UI,LS: Em caso de erro o histórico não é alterado
+        UI-->>U: mensagem de erro + botão "Tentar novamente"
+        opt usuário clica em "Tentar novamente"
+            U->>UI: retry()
+            UI->>SVC: repete as duas chamadas com o último termo buscado
+        end
+    end
+
+    U->>UI: alterna °C/°F
+    UI->>LS: clima:unit
+    UI-->>U: reconverte as temperaturas no cliente, sem nova chamada à API

@@ -1,0 +1,45 @@
+%% Visão de containers (inspirada no C4 nível 2): estado real no commit 6bc8a92.
+%% Fonte de verdade deste diagrama. O bloco equivalente no README espelha este arquivo.
+flowchart LR
+    user(["Usuário anônimo<br/>(navegador desktop ou mobile)"])
+
+    subgraph browser["Navegador do usuário"]
+        spa["<b>SPA Dashboard de Clima</b><br/>Angular 19 · TypeScript<br/>Busca, chamadas à API, normalização,<br/>agrupamento da previsão, estado da tela,<br/>conversão °C/°F"]
+        ls[("<b>localStorage</b><br/>clima:history · clima:unit · clima:theme")]
+    end
+
+    subgraph host["Host com Docker (porta 8080 → 80)"]
+        nginx["<b>Servidor estático</b><br/>nginx 1.27-alpine<br/>Só entrega index.html e bundles<br/>Fallback de SPA, gzip, cache de assets"]
+    end
+
+    subgraph ext["Serviços externos"]
+        owm["<b>OpenWeatherMap API</b><br/>REST · /data/2.5/weather<br/>e /data/2.5/forecast"]
+        icons["<b>OpenWeatherMap ícones</b><br/>/img/wn/{code}@2x.png e @4x.png"]
+        fonts["<b>Google Fonts</b><br/>CSS + fonte Inter"]
+    end
+
+    subgraph build["Tempo de build: não roda em produção"]
+        envfile[/"environment.ts<br/>(fora do Git, contém a chave)"/]
+        docker["docker build multi-stage<br/>node:22-alpine → nginx"]
+        ci["GitHub Actions<br/>lint · format · testes · build<br/>(chave placeholder, sem deploy)"]
+    end
+
+    absent["<b>Não existe hoje</b><br/>backend próprio · proxy da API<br/>cache de respostas · banco de dados<br/>autenticação · fila · telemetria"]
+
+    user -->|"digita cidade, confirma,<br/>alterna °C/°F e tema"| spa
+    spa -->|"GET / e bundles<br/>(HTTP)"| nginx
+    spa -->|"GET weather e forecast<br/>q, appid, units=metric, lang=pt_br<br/>(HTTPS, direto do navegador)"| owm
+    spa -->|"GET imagem do ícone<br/>(HTTPS)"| icons
+    spa -->|"GET CSS e fontes<br/>(HTTPS, via index.html)"| fonts
+    spa <-->|"lê na carga,<br/>grava a cada mudança"| ls
+
+    envfile -->|"embute a chave<br/>no bundle"| docker
+    docker -->|"imagem com<br/>bundle + nginx.conf"| nginx
+    ci -.->|"valida o mesmo código<br/>(não publica imagem)"| docker
+
+    classDef extStyle fill:#eeeeee,stroke:#777777,color:#222222
+    classDef buildStyle fill:#fff7e0,stroke:#b08900,color:#222222,stroke-dasharray: 4 3
+    classDef absentStyle fill:#ffffff,stroke:#c0392b,color:#c0392b,stroke-dasharray: 6 4
+    class owm,icons,fonts extStyle
+    class envfile,docker,ci buildStyle
+    class absent absentStyle

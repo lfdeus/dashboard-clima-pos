@@ -1,0 +1,207 @@
+openapi: 3.0.3
+info:
+  title: OpenWeatherMap, subconjunto consumido pelo Dashboard de Clima
+  version: "2.5-consumido-6bc8a92"
+  description: |
+    Contrato do lado do consumidor. Não descreve a API inteira da OpenWeatherMap: descreve
+    só as operações, parâmetros e campos que a SPA usa no commit 6bc8a92.
+
+    - Um campo marcado como `required` é lido sem proteção pelo código. Se ele faltar na
+      resposta, a normalização falha e o erro chega ao usuário como `UNKNOWN`.
+    - Um campo que não aparece aqui não é usado. Remover um campo daqui exige remover a
+      leitura correspondente em `weather.service.ts`.
+    - `appid`, `units` e `lang` são anexados só pelo interceptor (INV03). O service envia
+      apenas `q`.
+    - Os ícones vêm de outro host (`https://openweathermap.org/img/wn/{code}@2x.png` ou
+      `@4x.png`), são carregados direto pelo navegador e não fazem parte deste contrato.
+servers:
+  - url: https://api.openweathermap.org/data/2.5
+security:
+  - appid: []
+paths:
+  /weather:
+    get:
+      operationId: getCurrentWeather
+      summary: Condição atual de uma cidade
+      parameters:
+        - $ref: "#/components/parameters/q"
+        - $ref: "#/components/parameters/units"
+        - $ref: "#/components/parameters/lang"
+      responses:
+        "200":
+          description: Condição atual
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentWeatherResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /forecast:
+    get:
+      operationId: getForecast
+      summary: Previsão em pontos de 3 horas (até 5 dias)
+      parameters:
+        - $ref: "#/components/parameters/q"
+        - $ref: "#/components/parameters/units"
+        - $ref: "#/components/parameters/lang"
+      responses:
+        "200":
+          description: Previsão em pontos de 3 horas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForecastResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+components:
+  securitySchemes:
+    appid:
+      type: apiKey
+      in: query
+      name: appid
+      description: |
+        Chave embutida no bundle no momento do build. Fica visível para qualquer pessoa
+        que abrir a aplicação (L04).
+  parameters:
+    q:
+      name: q
+      in: query
+      required: true
+      description: Termo digitado, já sem espaços nas pontas, com pelo menos 2 caracteres (INV09).
+      schema:
+        type: string
+        minLength: 2
+    units:
+      name: units
+      in: query
+      required: true
+      description: Sempre `metric`. A conversão para °F é feita no cliente (INV04).
+      schema:
+        type: string
+        enum: [metric]
+    lang:
+      name: lang
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [pt_br]
+  responses:
+    Unauthorized:
+      description: Chave inválida ou ausente. A SPA traduz para `WeatherApiError` com código `UNAUTHORIZED` e ignora o corpo.
+    NotFound:
+      description: Cidade não encontrada. A SPA traduz para `NOT_FOUND` e ignora o corpo.
+    TooManyRequests:
+      description: |
+        Limite de requisições excedido. **Não tem tratamento próprio:** a SPA traduz para
+        `UNKNOWN`, com a mensagem genérica "Falha ao consultar o serviço de clima" (L03).
+  schemas:
+    WeatherCondition:
+      type: object
+      required: [description, icon]
+      properties:
+        description:
+          type: string
+          description: Texto já em pt_br, exibido como está.
+        icon:
+          type: string
+          description: Código do ícone (ex. `10d`). Se faltar, a SPA usa `01d`.
+    CurrentWeatherResponse:
+      type: object
+      required: [name, dt, timezone, visibility, sys, weather, main, wind, clouds]
+      properties:
+        name:
+          type: string
+          description: Nome normalizado da cidade. É este valor, e não o termo digitado, que vai para o histórico (INV06).
+        dt:
+          type: integer
+          description: Instante da observação, em segundos Unix. É exibido no fuso do navegador (L07).
+        timezone:
+          type: integer
+          description: Deslocamento em segundos em relação ao UTC. Lido, mas não usado (L07).
+        visibility:
+          type: integer
+          description: Lido, mas não exibido (D02).
+        sys:
+          type: object
+          required: [country, sunrise, sunset]
+          properties:
+            country: { type: string }
+            sunrise: { type: integer, description: "Lido, mas não exibido (D02)." }
+            sunset: { type: integer, description: "Lido, mas não exibido (D02)." }
+        weather:
+          type: array
+          description: Só o primeiro item é usado. A lista pode vir vazia.
+          items:
+            $ref: "#/components/schemas/WeatherCondition"
+        main:
+          type: object
+          required: [temp, feels_like, temp_min, temp_max, humidity, pressure]
+          properties:
+            temp: { type: number, description: "°C" }
+            feels_like: { type: number, description: "°C" }
+            temp_min: { type: number, description: "°C" }
+            temp_max: { type: number, description: "°C" }
+            humidity: { type: integer, description: "%" }
+            pressure: { type: integer, description: "hPa" }
+        wind:
+          type: object
+          required: [speed, deg]
+          properties:
+            speed: { type: number, description: "m/s. Exibido em m/s mesmo com °F selecionado." }
+            deg: { type: integer, description: "Lido, mas não exibido." }
+        clouds:
+          type: object
+          required: [all]
+          properties:
+            all: { type: integer, description: "%" }
+    ForecastResponse:
+      type: object
+      required: [list]
+      properties:
+        city:
+          type: object
+          description: Tipado no modelo, mas não lido pela normalização.
+          properties:
+            name: { type: string }
+            country: { type: string }
+            timezone: { type: integer }
+        list:
+          type: array
+          description: |
+            Pontos de 3 em 3 horas. A SPA agrupa os pontos pelos 10 primeiros caracteres
+            de `dt_txt`, ou seja, pela data em **UTC**, e mantém os 5 primeiros grupos (L07).
+          items:
+            type: object
+            required: [dt, dt_txt, main, weather, wind]
+            properties:
+              dt: { type: integer }
+              dt_txt:
+                type: string
+                description: Formato `YYYY-MM-DD HH:mm:ss`, em UTC. O ponto que termina em `12:00:00` representa o dia; se não houver, vale o primeiro ponto do grupo.
+                pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"
+              main:
+                type: object
+                required: [temp, temp_min, temp_max, humidity]
+                properties:
+                  temp: { type: number }
+                  temp_min: { type: number, description: "Mínima do dia = menor temp_min do grupo." }
+                  temp_max: { type: number, description: "Máxima do dia = maior temp_max do grupo." }
+                  humidity: { type: integer, description: "Média do grupo, arredondada." }
+              weather:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WeatherCondition"
+              wind:
+                type: object
+                required: [speed]
+                properties:
+                  speed: { type: number, description: "Média do grupo." }
