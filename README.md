@@ -22,6 +22,7 @@ Dashboard moderno de monitoramento meteorológico construído com **Angular 19**
 - [Arquitetura (diagrams as code)](#arquitetura-diagrams-as-code)
 - [Decisões arquiteturais](#decisões-arquiteturais)
 - [Testes](#testes)
+- [Testes de integração gerados com GenAI](#testes-de-integração-gerados-com-genai)
 - [Estratégia de branches](#estratégia-de-branches)
 - [Release](#release)
 - [Contribuindo](#contribuindo)
@@ -327,6 +328,17 @@ Relatório HTML em `coverage/dashboard-clima/index.html`. Thresholds (configurad
 | Branches   | 60%    |
 
 Cobertura atual da última execução: **statements 90%, lines 94%, functions 81%, branches 63%**.
+
+## Testes de integração gerados com GenAI
+
+Os testes em [`src/app/integration/`](src/app/integration/) exercitam a jornada "consultar o
+clima de uma cidade" de ponta a ponta dentro da SPA. Tudo roda de verdade (tela, service,
+interceptor, pipes e `localStorage`), e só a OpenWeatherMap é simulada. Eles foram gerados por
+dois tipos de prompt, executados numa LLM e revisados. Prompts, respostas brutas, resultados e
+achados estão em [`docs/testes-integracao/`](docs/testes-integracao/).
+
+Hoje são 63 casos: 60 passam e 3 falham, os três por defeito real do código, já documentado
+(CI-15, CE-12 e CE-42).
 
 ## Estratégia de branches
 
