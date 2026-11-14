@@ -2,12 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { CurrentWeather } from '../../../core/models/weather.model';
 import { WeatherService } from '../../../core/services/weather.service';
+import { CityTimePipe } from '../../pipes/city-time.pipe';
 import { TemperatureUnit, TemperatureUnitPipe } from '../../pipes/temperature-unit.pipe';
 
 @Component({
   selector: 'app-weather-card',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, TemperatureUnitPipe],
+  imports: [CityTimePipe, DatePipe, DecimalPipe, TemperatureUnitPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let w = weather();
@@ -70,11 +71,11 @@ import { TemperatureUnit, TemperatureUnitPipe } from '../../pipes/temperature-un
           </div>
           <div>
             <dt class="text-xs uppercase tracking-wide text-slate-500">Nascer do sol</dt>
-            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunrise * 1000 | date: 'HH:mm' }}</dd>
+            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunrise | cityTime: w.timezone }}</dd>
           </div>
           <div>
             <dt class="text-xs uppercase tracking-wide text-slate-500">Pôr do sol</dt>
-            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunset * 1000 | date: 'HH:mm' }}</dd>
+            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunset | cityTime: w.timezone }}</dd>
           </div>
         </dl>
       </article>

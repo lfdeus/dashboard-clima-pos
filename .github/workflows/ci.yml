@@ -107,6 +107,62 @@ jobs:
           path: coverage/
           if-no-files-found: ignore
 
+  # Prevenção: a suíte roda de novo em fusos diferentes do padrão do runner (UTC). Um teste ou um
+  # trecho de código que dependa do fuso de quem executa falha aqui, com o fuso no nome do job.
+  testes-outros-fusos:
+    name: Testes em outro fuso (${{ matrix.fuso }})
+    needs: testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - fuso: America/Sao_Paulo
+            artefato: sao-paulo
+          - fuso: Asia/Tokyo
+            artefato: toquio
+    env:
+      TZ: ${{ matrix.fuso }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Cria o arquivo de ambiente (sem chave real)
+        run: cp src/environments/environment.example.ts src/environments/environment.ts
+
+      - name: Registra o ambiente de execução
+        run: node scripts/ci/coletar-ambiente.mjs reports/ambiente.json
+
+      - name: Executa a suíte (Karma + ChromeHeadless)
+        id: karma
+        env:
+          KARMA_RESULTADOS_JSON: reports/karma-resultados.json
+        run: |
+          set +e
+          npm run test:ci 2>&1 | tee reports/karma.log
+          echo "codigo=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Portão de qualidade (falhas novas x quarentena)
+        run: node scripts/ci/avaliar-testes.mjs --codigo-karma "${{ steps.karma.outputs.codigo }}"
+
+      - name: Publica os relatórios dos testes
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: relatorios-testes-${{ matrix.artefato }}
+          path: reports/
+          if-no-files-found: warn
+
   diagnostico-ia:
     name: Diagnóstico com IA generativa
     needs: testes

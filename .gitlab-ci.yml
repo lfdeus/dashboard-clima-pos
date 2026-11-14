@@ -58,6 +58,16 @@ testes:
       - reports/
       - coverage/
 
+# Prevenção: repete a suíte em fusos diferentes do padrão do runner (UTC).
+testes_outros_fusos:
+  extends: testes
+  needs:
+    - job: testes
+      artifacts: false
+  parallel:
+    matrix:
+      - TZ: [America/Sao_Paulo, Asia/Tokyo]
+
 diagnostico_ia:
   stage: diagnostico
   needs:

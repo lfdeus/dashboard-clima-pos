@@ -94,4 +94,28 @@ describe('WeatherCardComponent', () => {
     expect(detail(card, 'Nascer do sol')).toBe('05:24');
     expect(detail(card, 'Pôr do sol')).toBe('18:57');
   });
+
+  it('shows sunrise and sunset in the local time of a city east of UTC (RF04)', async () => {
+    await TestBed.configureTestingModule({
+      imports: [WeatherCardComponent],
+      providers: [provideHttpClient(), { provide: API_CONFIG, useValue: CONFIG }]
+    }).compileComponents();
+
+    // Tóquio (UTC+9): em 02/01 o sol nasce às 06:51 e se põe às 16:39, no horário da cidade
+    const toquio: CurrentWeather = {
+      ...w,
+      city: 'Tokyo',
+      country: 'JP',
+      timezone: 32400,
+      sunrise: Date.parse('2030-01-01T21:51:00Z') / 1000,
+      sunset: Date.parse('2030-01-02T07:39:00Z') / 1000
+    };
+
+    const fixture = TestBed.createComponent(WeatherCardComponent);
+    fixture.componentRef.setInput('weather', toquio);
+    fixture.detectChanges();
+    const card = fixture.nativeElement as HTMLElement;
+    expect(detail(card, 'Nascer do sol')).toBe('06:51');
+    expect(detail(card, 'Pôr do sol')).toBe('16:39');
+  });
 });
