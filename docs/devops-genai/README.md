@@ -267,18 +267,55 @@ porque ali a regra não está decidida.
 
 ### Execuções no GitHub Actions
 
-<!-- PREENCHER depois de rodar o pipeline: link de cada execução e o resultado observado. -->
+Executado em 14/11/2026. Antes disso a aba Actions estava vazia: o workflow anterior escutava a
+branch `main`, e o repositório usa `master`.
 
 | Execução | Esperado | Observado | Link |
 | --- | --- | --- | --- |
-| 1. `master`, só com o pipeline | Aprovado: 88 passam, 3 em quarentena | _preencher_ | _preencher_ |
-| 2. Pull Request com a funcionalidade | Reprovado: 1 falha nova; diagnóstico comentado no PR | _preencher_ | _preencher_ |
-| 3. Pull Request com a correção | Aprovado nos três fusos: 95 passam, 3 em quarentena | _preencher_ | _preencher_ |
+| 1. `master`, só com o pipeline | Aprovado: 88 passam, 3 em quarentena | Aprovado. 91 executados · 88 passaram · 3 em quarentena. `diagnostico-ia` pulado. Runner em UTC, Ubuntu 26.04, Node 22, Chrome 157 | [execução 43622375368](https://github.com/lfdeus/dashboard-clima-pos/actions/runs/43622375368) |
+| 2. Pull Request com a funcionalidade | Reprovado: 1 falha nova; diagnóstico comentado no PR | Reprovado. 92 executados · 88 passaram · 4 falharam (1 nova, 3 em quarentena). `Expected '08:24' to be '05:24'`. O agente comentou no PR com as duas variantes | [execução 43623330335](https://github.com/lfdeus/dashboard-clima-pos/actions/runs/43623330335) · [PR #1](https://github.com/lfdeus/dashboard-clima-pos/pull/1) |
+| 3. Pull Request com a correção | Aprovado nos três fusos: 95 passam, 3 em quarentena | Aprovado. 98 executados · 95 passaram · 3 em quarentena, com o mesmo resultado em `UTC`, `America/Sao_Paulo` e `Asia/Tokyo` | [execução 43633577334](https://github.com/lfdeus/dashboard-clima-pos/actions/runs/43633577334) |
+
+Na máquina de desenvolvimento (Windows 11, fuso de Brasília) a mesma suíte da execução 2 passa:
+89 testes verdes e só a quarentena vermelha.
 
 ### O que a IA respondeu
 
-<!-- PREENCHER com o diagnóstico real publicado no Pull Request: causa apontada, classificação,
-     correção sugerida, diferença entre as variantes com e sem ambiente, e o resultado de aplicar a
-     sugestão nos três fusos. -->
+O diagnóstico completo está no [comentário do PR #1](https://github.com/lfdeus/dashboard-clima-pos/pull/1)
+e os prompts enviados, no artefato `diagnostico-ia` da execução 2. Modelo `openai/gpt-oss-120b`,
+prompt de 12.553 caracteres (3.641 tokens de entrada, 1.629 de saída) na variante com ambiente e
+12.191 (3.516 / 1.690) na variante sem ambiente. Entre as duas consultas o Groq devolveu HTTP 429;
+o agente esperou 6 segundos e repetiu.
 
-_A preencher com o diagnóstico publicado na execução 2._
+- **Causa apontada:** o template formata `sunrise` e `sunset` com o `DatePipe` sem aplicar o
+  deslocamento `weather.timezone`, e por isso os valores saem em UTC.
+- **Classificação:** defeito no código de produção. As duas variantes descartaram o ambiente de
+  forma explícita. Com os dados do runner no prompt: "o runner está em UTC, mas o código deveria
+  compensar o offset independentemente do fuso do runner". Sem eles: "o mesmo comportamento seria
+  reproduzido localmente ao rodar a aplicação em um navegador configurado para UTC".
+- **Correção sugerida:** `{{ (w.sunrise + w.timezone) * 1000 | date: 'HH:mm' }}`, e o mesmo para
+  `sunset`. É a segunda linha da tabela acima, o atalho.
+- **Confiança declarada:** alta, nas duas variantes.
+- **Validação sugerida:** `npm run test:ci` e um `npx jest ... -t "shows sunrise and sunset"`. O
+  projeto usa Karma e Jasmine, não Jest. Propôs um teste extra com Tóquio.
+- **Prevenção sugerida:** testes com deslocamentos positivo, zero e negativo; um utilitário central
+  de conversão; documentar que `sunrise` e `sunset` chegam em UTC.
+- **Diferença entre as variantes:** nenhuma de substância. A seção de ambiente dizia em texto claro
+  que o fuso resolvido era UTC, e a resposta concluiu que o fuso do runner não importava.
+
+Resultado de aplicar a sugestão da IA, com o teste de Tóquio que ela mesma propôs, numa branch
+descartável:
+
+| Ambiente | Fuso | Resultado |
+| --- | --- | --- |
+| Linux (container) | `UTC` | 3 falhas, só a quarentena: **o pipeline ficaria verde** |
+| Linux (container) | `Asia/Tokyo` | 5 falhas: São Paulo e Tóquio erradas em 9 h (`14:24` em vez de `05:24`) |
+| Linux (container) | `America/Sao_Paulo` | 5 falhas: São Paulo e Tóquio erradas em 3 h (`02:24` em vez de `05:24`) |
+| Windows 11 | Brasília | 5 falhas, idem |
+
+A IA acertou o sintoma e a classificação, mas errou a causa: tratou como "falta somar o
+deslocamento" o que era "o `DatePipe` formata no fuso do navegador". A soma desloca o instante uma
+vez e o `DatePipe` desloca de novo; em UTC o segundo deslocamento é zero e o erro fica invisível.
+Quem aplicasse a sugestão e olhasse só o pipeline aprovaria uma correção errada para todo usuário
+fora do UTC. O Chrome do Windows ignora a variável `TZ`, então a validação em outros fusos rodou
+em Linux, num container.
