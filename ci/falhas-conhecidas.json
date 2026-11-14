@@ -1,0 +1,23 @@
+{
+  "descricao": "Quarentena do CI: testes que falham por defeito conhecido e documentado. O portão de qualidade (scripts/ci/avaliar-testes.mjs) só reprova o pipeline por falhas que NÃO estão nesta lista. Quando o defeito for corrigido, remova a entrada.",
+  "falhas": [
+    {
+      "id": "CI-15",
+      "defeito": "D01",
+      "resumo": "Os dias da semana da previsão saem em inglês numa interface pt-BR (INV10).",
+      "referencia": "docs/testes-integracao/README.md#6-achados"
+    },
+    {
+      "id": "CE-12",
+      "defeito": "A1",
+      "resumo": "Campo obrigatório escalar ausente na resposta vira sucesso com undefined, em vez de erro UNKNOWN.",
+      "referencia": "docs/testes-integracao/README.md#6-achados"
+    },
+    {
+      "id": "CE-42",
+      "defeito": "A2",
+      "resumo": "A leitura do histórico não aplica o limite de 5 itens nem remove duplicatas (INV06).",
+      "referencia": "docs/testes-integracao/README.md#6-achados"
+    }
+  ]
+}

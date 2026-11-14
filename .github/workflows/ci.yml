@@ -2,48 +2,159 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  build-test-lint:
+  qualidade:
+    name: Lint, formatação e build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js 22 LTS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: Instala dependências
         run: npm ci
 
-      - name: Bootstrap environment file
+      - name: Cria o arquivo de ambiente (sem chave real)
         run: cp src/environments/environment.example.ts src/environments/environment.ts
 
       - name: Lint
         run: npm run lint
 
-      - name: Format check
+      - name: Formatação
         run: npm run format:check
 
-      - name: Test (headless Chrome with coverage)
-        run: npm run test:coverage -- --browsers=ChromeHeadlessCI
+      - name: Testes dos scripts de CI e do agente
+        run: npm run test:agente
 
-      - name: Build production bundle
+      - name: Build de produção
         run: npm run build:prod
 
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
+  testes:
+    name: Testes automatizados
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      status: ${{ steps.portao.outputs.status }}
+      diagnosticar: ${{ steps.portao.outputs.diagnosticar }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v6
         with:
-          name: coverage-report
+          node-version: 22
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Cria o arquivo de ambiente (sem chave real)
+        run: cp src/environments/environment.example.ts src/environments/environment.ts
+
+      - name: Registra o ambiente de execução
+        run: node scripts/ci/coletar-ambiente.mjs reports/ambiente.json
+
+      # O log vai para a tela e para um arquivo. Como `comando | tee` devolve o código de saída
+      # do tee, o do Karma é lido de PIPESTATUS; quem decide o resultado do job é o passo seguinte.
+      - name: Executa a suíte (Karma + ChromeHeadless)
+        id: karma
+        env:
+          KARMA_RESULTADOS_JSON: reports/karma-resultados.json
+        run: |
+          set +e
+          npm run test:ci 2>&1 | tee reports/karma.log
+          echo "codigo=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Portão de qualidade (falhas novas x quarentena)
+        id: portao
+        run: node scripts/ci/avaliar-testes.mjs --codigo-karma "${{ steps.karma.outputs.codigo }}"
+
+      - name: Publica os relatórios dos testes
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: relatorios-testes
+          path: reports/
+          if-no-files-found: warn
+
+      - name: Publica o relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cobertura
           path: coverage/
           if-no-files-found: ignore
+
+  diagnostico-ia:
+    name: Diagnóstico com IA generativa
+    needs: testes
+    # Só roda quando há falha nova (ou a suíte nem chegou a rodar). Não altera o resultado do pipeline.
+    if: ${{ always() && needs.testes.outputs.diagnosticar == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout (histórico completo, para o diff da entrega)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Baixa os relatórios do job de testes
+        uses: actions/download-artifact@v7
+        with:
+          name: relatorios-testes
+          path: reports
+
+      - name: Gera o diagnóstico
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          DIAG_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DIAG_COMPARAR_SEM_AMBIENTE: 'true'
+        run: node scripts/ia/diagnosticar-falha.mjs
+
+      - name: Publica no resumo da execução
+        run: cat reports/diagnostico/diagnostico.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comenta no Pull Request
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file reports/diagnostico/diagnostico.md
+
+      - name: Publica o prompt e o diagnóstico
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: diagnostico-ia
+          path: reports/diagnostico/
+          if-no-files-found: warn

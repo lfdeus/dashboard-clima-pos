@@ -23,6 +23,7 @@ Dashboard moderno de monitoramento meteorológico construído com **Angular 19**
 - [Decisões arquiteturais](#decisões-arquiteturais)
 - [Testes](#testes)
 - [Testes de integração gerados com GenAI](#testes-de-integração-gerados-com-genai)
+- [Pipeline de CI com diagnóstico por IA](#pipeline-de-ci-com-diagnóstico-por-ia)
 - [Estratégia de branches](#estratégia-de-branches)
 - [Release](#release)
 - [Contribuindo](#contribuindo)
@@ -215,6 +216,8 @@ A imagem é stateless e roda em qualquer plataforma de container — Kubernetes,
 | `npm test`              | Roda os testes em ChromeHeadless (sem watch) |
 | `npm run test:watch`    | Testes em modo watch                         |
 | `npm run test:coverage` | Testes + relatório de cobertura              |
+| `npm run test:ci`       | Testes + cobertura, como roda no pipeline    |
+| `npm run test:agente`   | Testes dos scripts de CI e do agente de IA   |
 | `npm run lint`          | Executa ESLint                               |
 | `npm run lint:fix`      | Aplica fixes automáticos                     |
 | `npm run format`        | Formata `src/` com Prettier                  |
@@ -225,6 +228,9 @@ A imagem é stateless e roda em qualquer plataforma de container — Kubernetes,
 ```
 dashboard-clima/
 ├── .github/workflows/ci.yml         # Pipeline GitHub Actions
+├── .gitlab-ci.yml                   # Equivalente para o GitLab CI
+├── ci/falhas-conhecidas.json        # Quarentena de testes com defeito documentado
+├── scripts/                         # Portão de qualidade do CI e agente de diagnóstico
 ├── src/
 │   ├── app/
 │   │   ├── core/                    # Models, tokens, service, interceptor
@@ -339,6 +345,18 @@ achados estão em [`docs/testes-integracao/`](docs/testes-integracao/).
 
 Hoje são 63 casos: 60 passam e 3 falham, os três por defeito real do código, já documentado
 (CI-15, CE-12 e CE-42).
+
+## Pipeline de CI com diagnóstico por IA
+
+O pipeline ([`.github/workflows/ci.yml`](.github/workflows/ci.yml), com equivalente em
+[`.gitlab-ci.yml`](.gitlab-ci.yml)) roda lint, formatação, build e a suíte de testes. As três
+falhas conhecidas ficam numa quarentena ([`ci/falhas-conhecidas.json`](ci/falhas-conhecidas.json)):
+o pipeline só reprova quando aparece uma falha **nova**. Nesse caso, um agente de IA generativa
+analisa a falha, o código e o ambiente de execução e comenta o diagnóstico no Pull Request. O
+agente não altera código nem o resultado do pipeline.
+
+Funcionamento, configuração da chave e limitações estão em
+[`docs/devops-genai/`](docs/devops-genai/).
 
 ## Estratégia de branches
 

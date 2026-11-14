@@ -13,6 +13,8 @@
     "test": "ng test --watch=false --browsers=ChromeHeadless",
     "test:watch": "ng test",
     "test:coverage": "ng test --watch=false --code-coverage --browsers=ChromeHeadless",
+    "test:ci": "ng test --watch=false --code-coverage --browsers=ChromeHeadlessCI",
+    "test:agente": "node --test \"scripts/**/*.test.mjs\"",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,css,json}\"",
