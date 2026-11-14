@@ -33,6 +33,14 @@ const w: CurrentWeather = {
   observedAt: 1_700_000_000
 };
 
+/** Valor exibido no cartão para um rótulo da lista de detalhes (ex.: "Umidade"). */
+function detail(root: HTMLElement, label: string): string {
+  const term = Array.from(root.querySelectorAll('dt')).find(
+    (dt) => dt.textContent?.trim() === label
+  );
+  return term?.nextElementSibling?.textContent?.trim() ?? '';
+}
+
 describe('WeatherCardComponent', () => {
   it('renders city, country, description and temperature', async () => {
     await TestBed.configureTestingModule({
@@ -61,5 +69,29 @@ describe('WeatherCardComponent', () => {
     fixture.componentRef.setInput('weather', null);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('article')).toBeNull();
+  });
+
+  it('shows sunrise and sunset in the local time of the city (RF04)', async () => {
+    await TestBed.configureTestingModule({
+      imports: [WeatherCardComponent],
+      providers: [provideHttpClient(), { provide: API_CONFIG, useValue: CONFIG }]
+    }).compileComponents();
+
+    // São Paulo (UTC-3): em 01/01 o sol nasce às 05:24 e se põe às 18:57, no horário da cidade
+    const saoPaulo: CurrentWeather = {
+      ...w,
+      city: 'São Paulo',
+      country: 'BR',
+      timezone: -10800,
+      sunrise: Date.parse('2030-01-01T08:24:00Z') / 1000,
+      sunset: Date.parse('2030-01-01T21:57:00Z') / 1000
+    };
+
+    const fixture = TestBed.createComponent(WeatherCardComponent);
+    fixture.componentRef.setInput('weather', saoPaulo);
+    fixture.detectChanges();
+    const card = fixture.nativeElement as HTMLElement;
+    expect(detail(card, 'Nascer do sol')).toBe('05:24');
+    expect(detail(card, 'Pôr do sol')).toBe('18:57');
   });
 });

@@ -50,7 +50,7 @@ import { TemperatureUnit, TemperatureUnitPipe } from '../../pipes/temperature-un
         </p>
 
         <dl
-          class="mt-6 grid grid-cols-2 gap-4 border-t border-slate-200 pt-6 dark:border-slate-700 sm:grid-cols-4"
+          class="mt-6 grid grid-cols-2 gap-4 border-t border-slate-200 pt-6 dark:border-slate-700 sm:grid-cols-3"
         >
           <div>
             <dt class="text-xs uppercase tracking-wide text-slate-500">Umidade</dt>
@@ -67,6 +67,14 @@ import { TemperatureUnit, TemperatureUnitPipe } from '../../pipes/temperature-un
           <div>
             <dt class="text-xs uppercase tracking-wide text-slate-500">Nuvens</dt>
             <dd class="mt-0.5 text-lg font-semibold">{{ w.cloudiness }}%</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-500">Nascer do sol</dt>
+            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunrise * 1000 | date: 'HH:mm' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-500">Pôr do sol</dt>
+            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunset * 1000 | date: 'HH:mm' }}</dd>
           </div>
         </dl>
       </article>
