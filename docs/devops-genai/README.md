@@ -19,6 +19,7 @@ código nem o resultado do pipeline.
 5. [Como reproduzir na sua máquina](#5-como-reproduzir-na-sua-máquina)
 6. [Limitações](#6-limitações)
 7. [Arquivos](#7-arquivos)
+8. [Experimento: uma falha que só aparece no CI](#8-experimento-uma-falha-que-só-aparece-no-ci)
 
 ## 1. Pipeline
 
@@ -31,6 +32,7 @@ os mesmos scripts.
 flowchart LR
     E([push ou pull request]) --> Q["qualidade<br/>lint, formatação, build"]
     E --> T["testes<br/>Karma + portão de qualidade"]
+    T -- "sem falha nova" --> F["testes em outros fusos<br/>São Paulo e Tóquio"]
     T -- "falha nova" --> D["diagnóstico com IA<br/>(Groq)"]
     D --> C["comentário no PR,<br/>resumo e artefatos"]
 ```
@@ -39,6 +41,7 @@ flowchart LR
 | --- | --- | --- |
 | `qualidade` | ESLint, Prettier, testes dos scripts de CI (`node --test`) e build de produção | Qualquer um desses passos falha |
 | `testes` | Registra o ambiente, roda a suíte no Karma (ChromeHeadless) e aplica o portão de qualidade | Há falha **nova**, a execução não termina ou a cobertura fica abaixo do mínimo |
+| `testes-outros-fusos` | Repete a suíte com `TZ=America/Sao_Paulo` e `TZ=Asia/Tokyo` (o runner usa UTC) | Há falha nova em algum dos fusos |
 | `diagnostico-ia` | Monta o contexto, consulta o modelo e publica o diagnóstico | Nunca: é um apoio, não um portão |
 
 Dois detalhes do job de testes:
@@ -187,4 +190,132 @@ scripts/ia/
 ├── contexto.mjs                    monta o prompt, mascara segredos (funções puras)
 ├── contexto.test.mjs
 └── diagnosticar-falha.mjs          lê os relatórios, chama a API e grava o diagnóstico
+src/app/shared/pipes/
+├── city-time.pipe.ts               horário local da cidade (correção do experimento)
+└── city-time.pipe.spec.ts
 ```
+
+## 8. Experimento: uma falha que só aparece no CI
+
+### O erro intencional
+
+O RF04 pede o nascer e o pôr do sol no cartão do clima atual, e isso estava pendente (D02 na
+[documentação de arquitetura](../arquitetura/README.md)). A funcionalidade foi implementada do
+jeito mais natural, copiando o padrão do "Atualizado em" que já existia no cartão:
+
+```html
+<dd>{{ w.sunrise * 1000 | date: 'HH:mm' }}</dd>
+```
+
+O `DatePipe` sem fuso explícito formata no fuso **do navegador**, não no da cidade consultada.
+O teste que acompanha a funcionalidade usa São Paulo. Numa máquina configurada para o horário de
+Brasília, o fuso do navegador coincide com o da cidade, o teste passa e a tela parece certa. No
+runner do CI, que usa UTC, o mesmo teste falha:
+
+```text
+WeatherCardComponent shows sunrise and sunset in the local time of the city (RF04)
+  Expected '08:24' to be '05:24'.
+  Expected '21:57' to be '18:57'.
+```
+
+Nada no log aponta para o fuso horário. É a lacuna L07 ("o campo `timezone` da API é lido mas não
+usado") virando defeito: quem consulta Tóquio a partir do Brasil veria o sol nascer às 18:51.
+
+### Reprodução local
+
+Resultado da suíte completa em cada etapa, com a variável `TZ` trocada (Linux, Node 22, Chrome 153):
+
+| Etapa | `TZ=America/Sao_Paulo` | `TZ=UTC` (como o runner) |
+| --- | --- | --- |
+| Antes da funcionalidade | 88 passam, 3 em quarentena | 88 passam, 3 em quarentena |
+| Com a funcionalidade e o erro | 89 passam, 3 em quarentena | **1 falha nova**, 88 passam, 3 em quarentena |
+| Com a correção | 95 passam, 3 em quarentena | 95 passam, 3 em quarentena |
+
+Com a correção, o resultado em `TZ=Asia/Tokyo` é o mesmo: 95 passam, 3 em quarentena.
+
+### O pipeline verde não prova a correção
+
+Três implementações foram testadas nos três fusos, com os dois testes do cartão que existem depois
+da correção (cidade a oeste do UTC, São Paulo, e a leste, Tóquio):
+
+| Implementação | `America/Sao_Paulo` | `UTC` | `Asia/Tokyo` |
+| --- | --- | --- | --- |
+| Erro intencional: `sunrise * 1000 \| date: 'HH:mm'` | 1 falha | 2 falhas | 1 falha |
+| Atalho: `(sunrise + timezone) * 1000 \| date: 'HH:mm'` | 2 falhas | **passa** | 2 falhas |
+| Adotada: pipe `cityTime`, que lê o instante deslocado em UTC | passa | passa | passa |
+
+O atalho da segunda linha soma o deslocamento da cidade, mas continua formatando no fuso do
+navegador. Ele só acerta quando o navegador está em UTC, que é justamente o caso do runner. Quem
+aplicasse essa correção e olhasse só para o pipeline veria tudo verde, com o defeito intacto para
+qualquer usuário fora do UTC.
+
+O outro atalho possível é fixar `TZ=America/Sao_Paulo` no pipeline. O teste de São Paulo volta a
+passar e o código continua errado para qualquer cidade de outro fuso.
+
+### Correção e prevenção
+
+- [`city-time.pipe.ts`](../../src/app/shared/pipes/city-time.pipe.ts) formata o horário a partir
+  do instante e do deslocamento da cidade, sem passar pelo fuso do navegador. Tem testes para
+  deslocamento negativo, positivo com virada de dia, deslocamento que não é hora cheia e dado
+  ausente.
+- O cartão ganhou um segundo teste, com uma cidade a leste do UTC.
+- O pipeline ganhou o job `testes-outros-fusos`. Uma dependência do fuso de quem executa agora
+  falha com o fuso no nome do job, sem depender de alguém desconfiar disso ao ler o log.
+
+O "Atualizado em" do cartão ainda usa o fuso do navegador. Essa parte da L07 continua em aberto,
+porque ali a regra não está decidida.
+
+### Execuções no GitHub Actions
+
+Executado em 14/11/2026. Antes disso a aba Actions estava vazia: o workflow anterior escutava a
+branch `main`, e o repositório usa `master`.
+
+| Execução | Esperado | Observado | Link |
+| --- | --- | --- | --- |
+| 1. `master`, só com o pipeline | Aprovado: 88 passam, 3 em quarentena | Aprovado. 91 executados · 88 passaram · 3 em quarentena. `diagnostico-ia` pulado. Runner em UTC, Ubuntu 26.04, Node 22, Chrome 157 | [execução 43622375368](https://github.com/lfdeus/dashboard-clima-pos/actions/runs/43622375368) |
+| 2. Pull Request com a funcionalidade | Reprovado: 1 falha nova; diagnóstico comentado no PR | Reprovado. 92 executados · 88 passaram · 4 falharam (1 nova, 3 em quarentena). `Expected '08:24' to be '05:24'`. O agente comentou no PR com as duas variantes | [execução 43623330335](https://github.com/lfdeus/dashboard-clima-pos/actions/runs/43623330335) · [PR #1](https://github.com/lfdeus/dashboard-clima-pos/pull/1) |
+| 3. Pull Request com a correção | Aprovado nos três fusos: 95 passam, 3 em quarentena | Aprovado. 98 executados · 95 passaram · 3 em quarentena, com o mesmo resultado em `UTC`, `America/Sao_Paulo` e `Asia/Tokyo` | [execução 43633577334](https://github.com/lfdeus/dashboard-clima-pos/actions/runs/43633577334) |
+
+Na máquina de desenvolvimento (Windows 11, fuso de Brasília) a mesma suíte da execução 2 passa:
+89 testes verdes e só a quarentena vermelha.
+
+### O que a IA respondeu
+
+O diagnóstico completo está no [comentário do PR #1](https://github.com/lfdeus/dashboard-clima-pos/pull/1)
+e os prompts enviados, no artefato `diagnostico-ia` da execução 2. Modelo `openai/gpt-oss-120b`,
+prompt de 12.553 caracteres (3.641 tokens de entrada, 1.629 de saída) na variante com ambiente e
+12.191 (3.516 / 1.690) na variante sem ambiente. Entre as duas consultas o Groq devolveu HTTP 429;
+o agente esperou 6 segundos e repetiu.
+
+- **Causa apontada:** o template formata `sunrise` e `sunset` com o `DatePipe` sem aplicar o
+  deslocamento `weather.timezone`, e por isso os valores saem em UTC.
+- **Classificação:** defeito no código de produção. As duas variantes descartaram o ambiente de
+  forma explícita. Com os dados do runner no prompt: "o runner está em UTC, mas o código deveria
+  compensar o offset independentemente do fuso do runner". Sem eles: "o mesmo comportamento seria
+  reproduzido localmente ao rodar a aplicação em um navegador configurado para UTC".
+- **Correção sugerida:** `{{ (w.sunrise + w.timezone) * 1000 | date: 'HH:mm' }}`, e o mesmo para
+  `sunset`. É a segunda linha da tabela acima, o atalho.
+- **Confiança declarada:** alta, nas duas variantes.
+- **Validação sugerida:** `npm run test:ci` e um `npx jest ... -t "shows sunrise and sunset"`. O
+  projeto usa Karma e Jasmine, não Jest. Propôs um teste extra com Tóquio.
+- **Prevenção sugerida:** testes com deslocamentos positivo, zero e negativo; um utilitário central
+  de conversão; documentar que `sunrise` e `sunset` chegam em UTC.
+- **Diferença entre as variantes:** nenhuma de substância. A seção de ambiente dizia em texto claro
+  que o fuso resolvido era UTC, e a resposta concluiu que o fuso do runner não importava.
+
+Resultado de aplicar a sugestão da IA, com o teste de Tóquio que ela mesma propôs, numa branch
+descartável:
+
+| Ambiente | Fuso | Resultado |
+| --- | --- | --- |
+| Linux (container) | `UTC` | 3 falhas, só a quarentena: **o pipeline ficaria verde** |
+| Linux (container) | `Asia/Tokyo` | 5 falhas: São Paulo e Tóquio erradas em 9 h (`14:24` em vez de `05:24`) |
+| Linux (container) | `America/Sao_Paulo` | 5 falhas: São Paulo e Tóquio erradas em 3 h (`02:24` em vez de `05:24`) |
+| Windows 11 | Brasília | 5 falhas, idem |
+
+A IA acertou o sintoma e a classificação, mas errou a causa: tratou como "falta somar o
+deslocamento" o que era "o `DatePipe` formata no fuso do navegador". A soma desloca o instante uma
+vez e o `DatePipe` desloca de novo; em UTC o segundo deslocamento é zero e o erro fica invisível.
+Quem aplicasse a sugestão e olhasse só o pipeline aprovaria uma correção errada para todo usuário
+fora do UTC. O Chrome do Windows ignora a variável `TZ`, então a validação em outros fusos rodou
+em Linux, num container.

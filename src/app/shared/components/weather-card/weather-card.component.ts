@@ -2,12 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { CurrentWeather } from '../../../core/models/weather.model';
 import { WeatherService } from '../../../core/services/weather.service';
+import { CityTimePipe } from '../../pipes/city-time.pipe';
 import { TemperatureUnit, TemperatureUnitPipe } from '../../pipes/temperature-unit.pipe';
 
 @Component({
   selector: 'app-weather-card',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, TemperatureUnitPipe],
+  imports: [CityTimePipe, DatePipe, DecimalPipe, TemperatureUnitPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let w = weather();
@@ -50,7 +51,7 @@ import { TemperatureUnit, TemperatureUnitPipe } from '../../pipes/temperature-un
         </p>
 
         <dl
-          class="mt-6 grid grid-cols-2 gap-4 border-t border-slate-200 pt-6 dark:border-slate-700 sm:grid-cols-4"
+          class="mt-6 grid grid-cols-2 gap-4 border-t border-slate-200 pt-6 dark:border-slate-700 sm:grid-cols-3"
         >
           <div>
             <dt class="text-xs uppercase tracking-wide text-slate-500">Umidade</dt>
@@ -67,6 +68,14 @@ import { TemperatureUnit, TemperatureUnitPipe } from '../../pipes/temperature-un
           <div>
             <dt class="text-xs uppercase tracking-wide text-slate-500">Nuvens</dt>
             <dd class="mt-0.5 text-lg font-semibold">{{ w.cloudiness }}%</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-500">Nascer do sol</dt>
+            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunrise | cityTime: w.timezone }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-500">Pôr do sol</dt>
+            <dd class="mt-0.5 text-lg font-semibold">{{ w.sunset | cityTime: w.timezone }}</dd>
           </div>
         </dl>
       </article>

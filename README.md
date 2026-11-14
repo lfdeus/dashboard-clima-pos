@@ -248,7 +248,7 @@ dashboard-clima/
 │   │   │   │   ├── forecast-card/
 │   │   │   │   ├── spinner/
 │   │   │   │   └── error-message/
-│   │   │   └── pipes/temperature-unit.pipe.ts
+│   │   │   └── pipes/                # temperature-unit, city-time
 │   │   ├── app.component.ts
 │   │   ├── app.config.ts
 │   │   └── app.routes.ts
@@ -353,10 +353,11 @@ O pipeline ([`.github/workflows/ci.yml`](.github/workflows/ci.yml), com equivale
 falhas conhecidas ficam numa quarentena ([`ci/falhas-conhecidas.json`](ci/falhas-conhecidas.json)):
 o pipeline só reprova quando aparece uma falha **nova**. Nesse caso, um agente de IA generativa
 analisa a falha, o código e o ambiente de execução e comenta o diagnóstico no Pull Request. O
-agente não altera código nem o resultado do pipeline.
+agente não altera código nem o resultado do pipeline. Sem falha nova, a suíte roda de novo em
+outros dois fusos horários.
 
-Funcionamento, configuração da chave e limitações estão em
-[`docs/devops-genai/`](docs/devops-genai/).
+Funcionamento, configuração da chave, limitações e o experimento com uma falha que só aparece no
+CI estão em [`docs/devops-genai/`](docs/devops-genai/).
 
 ## Estratégia de branches
 
